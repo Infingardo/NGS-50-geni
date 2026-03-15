@@ -37,11 +37,12 @@ Strumento operativo per la compilazione della Parte B del referto NGS su pannell
 
 **Flusso operativo:**
 
-1. Il **Biologo Molecolare** sequenzia e compila **Parte A** in Pathox (kit, campione, copertura, VAF grezzi)
-2. Il **Patologo** stima la cellularità su H&E prima dell'estrazione
-3. Il **Patologo** apre `NGS_Refertazione_v2.html` nel browser, seleziona sede → gene → variante, inserisce cellularità e VAF, preme **Genera**
-4. Per ogni gene aggiuntivo preme **+ Aggiungi altro gene**
-5. Quando ha finito tutti i geni preme **Copia referto completo** e incolla in **Parte B** su Pathox
+1. L\'**Oncologo** invia la richiesta NGS tramite il sistema informatico ospedaliero
+2. Il **Patologo** riceve il caso in Pathox, valuta l\'H&E e stima la cellularità tumorale prima dell\'invio in BioMol
+3. Il **Biologo Molecolare** estrae DNA+RNA da FFPE, sequenzia e compila **Parte A** in Pathox (kit, campione, copertura, VAF grezzi — senza interpretazione clinica)
+4. Il **Patologo** apre `NGS_Refertazione_v2.html` nel browser, seleziona sede → gene → variante, inserisce cellularità e VAF, preme **Genera**
+5. Per ogni gene aggiuntivo preme **+ Aggiungi altro gene**
+6. Quando ha finito tutti i geni preme **Copia referto completo** e incolla in **Parte B** su Pathox, quindi firma
 
 **Note:**
 - La sede rimane fissa tra un gene e l'altro

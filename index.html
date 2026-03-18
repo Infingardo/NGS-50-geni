@@ -88,6 +88,11 @@ footer{text-align:center;padding:2rem 1rem 1rem;font-size:11px;color:var(--text3
 #glossBox h3{margin:0 0 1rem;font-size:14px;color:#1B3A6B;border-bottom:1px solid #E2E8F0;padding-bottom:8px}
 #glossBox b{color:#1B3A6B}
 #glossClose{float:right;background:none;border:none;font-size:18px;cursor:pointer;color:#64748B;margin-top:-4px}
+.btn-panel{width:100%;padding:9px 16px;font-size:13px;font-weight:600;
+  border:1.5px dashed var(--navy);border-radius:var(--r);background:transparent;
+  color:var(--navy);cursor:pointer;margin-bottom:0.5rem;transition:background .15s,color .15s;
+  display:none;}
+.btn-panel:hover{background:var(--navy);color:#fff}
 #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);
   background:#166534;color:#fff;padding:10px 20px;border-radius:8px;
   font-size:13px;font-weight:600;opacity:0;transition:opacity .3s;
@@ -197,6 +202,7 @@ footer{text-align:center;padding:2rem 1rem 1rem;font-size:11px;color:var(--text3
       </div>
     </div>
   </div>
+  <button class="btn-panel" id="btnPanel" onclick="usaPannelloNegativo()" style="display:none;margin-top:0.75rem">⊘ Tutto il resto negativo? Clicca qui per il pannello negativo completo</button>
 </div>
 <footer>S.C. Anatomia Patologica &middot; ASST FBF Sacco &middot; 2026 &middot; Classificazione AMP/ASCO/CAP (Li et al., JMD 2017)</footer>
 <script>
@@ -218,6 +224,9 @@ function onSede(keepGene){
     var o=document.createElement("option"); o.value=g; o.textContent=g; gSel.appendChild(o);
   });
   gSel.disabled=false;
+  // Show panel negativo button if available for this sede
+  var btnP=document.getElementById("btnPanel");
+  if(btnP) btnP.style.display=(PANELS[sede]?"block":"none");
 }
 
 function onGene(){
@@ -264,20 +273,21 @@ function checkReady(){
 }
 function onVariant(){
   _currentSaved=false;
-  var v=document.getElementById("variant").value;
   
   document.getElementById("result").classList.remove("visible");
   updateVafVisibility();
   checkReady();
 }
 function getVafMode(){
+  var variant=document.getElementById("variant").value;
+  if(variant==="__wt__"||variant==="__nv__") return "not_applicable";
+  if(variant==="__vus__") return "required";
   var sede=document.getElementById("sede").value;
   var gene=document.getElementById("gene").value;
-  var variant=document.getElementById("variant").value;
   if(!sede||!gene||!variant) return "required";
   var variants=(DB[sede]||{})[gene]||[];
   var item=variants.find(function(x){return x.v===variant;});
-  return item?item.vafMode||"required":"required";
+  return item ? (item.vafMode || "required") : "required";
 }
 function getItemKind(){
   var sede=document.getElementById("sede").value;
@@ -496,6 +506,7 @@ function genera(){
   document.getElementById("result").scrollIntoView({behavior:"smooth",block:"nearest"});
   document.getElementById("btnNuovoGene").style.display="block";
   _currentSaved=false;
+  _lastBlocked=!!(f&&f.blocca);
 }
 
 function copia(){
@@ -509,8 +520,10 @@ function copia(){
   setTimeout(function(){btn.textContent="Copia";},2000);
 }
 
+var PANELS={"NSCLC": {"genes": ["EGFR", "ALK", "ROS1", "MET", "KRAS", "BRAF", "NTRK1", "NTRK2", "NTRK3", "RET", "ERBB2", "MSI"], "frase": "Non si evidenziano alterazioni nei geni EGFR, ALK, ROS1, MET (esone 14), KRAS, BRAF, NTRK1/2/3, RET ed ERBB2 tra quelle indagate nel campione analizzato. Profilo MSS (microsatellite stabile)."}, "CRC": {"genes": ["KRAS", "NRAS", "BRAF", "MSI", "ERBB2", "NTRK1", "NTRK2", "NTRK3"], "frase": "Non si evidenziano alterazioni nei geni KRAS (esoni 2/3/4), NRAS (esoni 2/3/4), BRAF ed ERBB2 tra quelle indagate nel campione analizzato. Fusioni NTRK1/2/3 non rilevate. Profilo MSS (microsatellite stabile)."}, "Gastrico/GEJ": {"genes": ["ERBB2", "MSI", "FGFR2", "MET"], "frase": "Non si evidenziano amplificazioni di ERBB2, FGFR2 o MET tra quelle indagate nel campione analizzato. Profilo MSS (microsatellite stabile)."}, "Melanoma": {"genes": ["BRAF", "NRAS", "KIT", "GNA11", "GNAQ"], "frase": "Non si evidenziano alterazioni nei geni BRAF, NRAS, KIT, GNA11 e GNAQ tra quelle indagate nel campione analizzato."}};
 var _referto=[];
 var _currentSaved=false;
+var _lastBlocked=false;
 function aggiungi(){
   if(_currentSaved) return;
   var testo=document.getElementById("resText").textContent;
@@ -547,7 +560,7 @@ function copiaReferto(btn){
   // Auto-save any visible unsaved result before copying
   var resVisible=document.getElementById("result").classList.contains("visible");
   var resTesto=document.getElementById("resText").textContent;
-  if(resVisible&&resTesto) aggiungi();
+  if(resVisible&&resTesto&&!_lastBlocked) aggiungi();
   if(!_referto.length){alert("Nessuna frase nell'accumulatore. Genera almeno un gene prima di copiare.");return;}
   var testo=_referto.map(function(r){
     return r.testo; // note interne escluse dal referto copiato
@@ -583,6 +596,29 @@ function svuotaReferto(){
   _referto=[];
   aggiornaAccumulatore();
 }
+function usaPannelloNegativo(){
+  var sede=document.getElementById("sede").value;
+  var panel=PANELS[sede];
+  if(!panel) return;
+  // Save current gene only if not blocked
+  if(_currentSaved===false&&document.getElementById("resText").textContent&&!_lastBlocked){
+    aggiungi();
+  } else if(_lastBlocked){
+    showToast("\u26a0 Caso bloccato \u2014 non salvato");
+  }
+  // Remove from accumulator any genes belonging to this panel (avoid contradictions)
+  _referto=_referto.filter(function(r){
+    if(!r.key||!r.key.startsWith(sede+"|")) return true;
+    var gene=r.key.split("|")[1];
+    return panel.genes.indexOf(gene)===-1&&gene!=="PANNELLO_NEGATIVO";
+  });
+  var key=sede+"|PANNELLO_NEGATIVO|completo";
+  _referto.push({key:key,label:"Pannello negativo ("+sede+")",testo:panel.frase,nota:""});
+  aggiornaAccumulatore();
+  showToast("Pannello negativo "+sede+" aggiunto \u2713");
+  var acc=document.getElementById("accumulatore");
+  if(acc) acc.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
 function toggleGloss(){
   var m=document.getElementById("glossModal");
   m.classList.toggle("open");
@@ -596,7 +632,8 @@ function nuovoGene(){
   // Save current result to accumulator
   var gene=document.getElementById("gene").value;
   var testo=document.getElementById("resText").textContent;
-  if(testo){aggiungi();showToast((gene||"Gene")+" salvato nel referto ✓");}
+  if(testo&&!_lastBlocked){aggiungi();showToast((gene||"Gene")+" salvato nel referto ✓");}
+  else if(testo&&_lastBlocked){showToast("⚠ Caso bloccato — non salvato");}
   // Reset only gene and variant — keep sede, cellularità, VAF
   document.getElementById("gene").value="";
   document.getElementById("variant").innerHTML="<option value=''>— selezionare variante —</option>";
@@ -604,6 +641,7 @@ function nuovoGene(){
   document.getElementById("result").classList.remove("visible");
   document.getElementById("btnGen").disabled=true;
   document.getElementById("btnNuovoGene").style.display="none";
+  _lastBlocked=false;
   document.getElementById("gene").focus();
   // Scroll accumulator into view
   setTimeout(function(){
@@ -616,6 +654,10 @@ function nuovoGene(){
 function reset(fullReset){
   document.getElementById("btnNuovoGene").style.display="none";
   if(fullReset){
+    _referto=[];
+    aggiornaAccumulatore();
+    var btnP=document.getElementById("btnPanel");
+    if(btnP) btnP.style.display="none";
     document.getElementById("sede").value="";
     var gSel=document.getElementById("gene");
     gSel.innerHTML="<option value=''>— prima selezionare sede —</option>";
@@ -630,6 +672,7 @@ function reset(fullReset){
   document.getElementById("result").classList.remove("visible");
   document.getElementById("btnGen").disabled=true;
   _currentSaved=false;
+  _lastBlocked=false;
   if(fullReset){
     document.getElementById("sede").focus();
   } else {

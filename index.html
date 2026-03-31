@@ -358,18 +358,18 @@ function frase(gene,variant,vaf,cell,sede,stato){
     blocca:true
   };
   if(stato==="subclonale") return {
-    testo:"Si documenta la presenza di "+g+(vLabel?" "+vLabel:"")+sStr+(vcStr?" "+vcStr:"")+". Il VAF è inferiore all'atteso per la cellularità stimata; il dato è da interpretare con cautela, non escludendo una mutazione subclonale a frequenza minoritaria.",
-    nota:"Variante subclonale — firma con nota obbligatoria.",
+    testo:"Si documenta la presenza di "+g+(vLabel?" "+vLabel:"")+sStr+(vcStr?" "+vcStr:"")+("."),
+    nota:"VAF basso (atteso ~"+Math.round(cell/2)+"%, rilevato "+parseFloat(vaf).toFixed(0)+"%) — possibile mutazione subclonale. Se confermi la cellularità, la frase è pronta.",
     blocca:false
   };
   if(stato==="loh") return {
-    testo:"Si documenta la presenza di "+g+(vLabel?" "+vLabel:"")+sStr+(vcStr?" "+vcStr:"")+". Il VAF elevato rispetto alla cellularità stimata è compatibile con arricchimento clonale e/o perdita dell'allele wild-type.",
-    nota:"Possibile LOH o cellularità sottostimata — firma con nota obbligatoria.",
+    testo:"Si documenta la presenza di "+g+(vLabel?" "+vLabel:"")+sStr+(vcStr?" "+vcStr:"")+("."),
+    nota:"VAF elevato (atteso ~"+Math.round(cell/2)+"%, rilevato "+parseFloat(vaf).toFixed(0)+"%) — compatibile con LOH. Se confermi la cellularità, la frase è pronta.",
     blocca:false
   };
   if(stato==="discordante") return {
-    testo:"Si documenta la presenza di "+g+(vLabel?" "+vLabel:"")+sStr+(vcStr?" "+vcStr:"")+". Il VAF è discordante rispetto all'atteso; possibile eterogeneità intratumorale.",
-    nota:"Possibile eterogeneità intratumorale — firma con nota.",
+    testo:"Si documenta la presenza di "+g+(vLabel?" "+vLabel:"")+sStr+(vcStr?" "+vcStr:"")+("."),
+    nota:"VAF discordante (atteso ~"+Math.round(cell/2)+"%, rilevato "+parseFloat(vaf).toFixed(0)+"%) — possibile eterogeneità intratumorale. Se confermi la cellularità, la frase è pronta.",
     blocca:false
   };
   return {
@@ -520,7 +520,7 @@ function copia(){
   setTimeout(function(){btn.textContent="Copia";},2000);
 }
 
-var PANELS={"NSCLC": {"genes": ["EGFR", "ALK", "ROS1", "MET", "KRAS", "BRAF", "NTRK1", "NTRK2", "NTRK3", "RET", "ERBB2", "MSI"], "frase": "Non si evidenziano alterazioni nei geni EGFR, ALK, ROS1, MET (esone 14), KRAS, BRAF, NTRK1/2/3, RET ed ERBB2 tra quelle indagate nel campione analizzato. Profilo MSS (microsatellite stabile)."}, "CRC": {"genes": ["KRAS", "NRAS", "BRAF", "MSI", "ERBB2", "NTRK1", "NTRK2", "NTRK3"], "frase": "Non si evidenziano alterazioni nei geni KRAS (esoni 2/3/4), NRAS (esoni 2/3/4), BRAF ed ERBB2 tra quelle indagate nel campione analizzato. Fusioni NTRK1/2/3 non rilevate. Profilo MSS (microsatellite stabile)."}, "Gastrico/GEJ": {"genes": ["ERBB2", "MSI", "FGFR2", "MET"], "frase": "Non si evidenziano amplificazioni di ERBB2, FGFR2 o MET tra quelle indagate nel campione analizzato. Profilo MSS (microsatellite stabile)."}, "Melanoma": {"genes": ["BRAF", "NRAS", "KIT", "GNA11", "GNAQ"], "frase": "Non si evidenziano alterazioni nei geni BRAF, NRAS, KIT, GNA11 e GNAQ tra quelle indagate nel campione analizzato."}};
+var PANELS={"NSCLC": {"genes": ["EGFR", "ALK", "ROS1", "MET", "KRAS", "BRAF", "NTRK1", "NTRK2", "NTRK3", "RET", "ERBB2", "MSI"], "frase": "Non si evidenziano alterazioni nei geni EGFR, ALK, ROS1, MET (esone 14), KRAS, BRAF, NTRK1/2/3, RET ed ERBB2 tra quelle indagate nel campione analizzato. Profilo MSS (microsatellite stabile)."}, "CRC": {"genes": ["KRAS", "NRAS", "BRAF", "MSI", "ERBB2", "NTRK1", "NTRK2", "NTRK3"], "frase": "Non si evidenziano alterazioni nei geni KRAS (esoni 2/3/4), NRAS (esoni 2/3/4), BRAF ed ERBB2 tra quelle indagate nel campione analizzato. Fusioni NTRK1/2/3 non rilevate. Profilo MSS (microsatellite stabile)."}, "Gastrico/GEJ": {"genes": ["ERBB2", "MSI", "FGFR2", "MET"], "frase": "Non si evidenziano amplificazioni di ERBB2, FGFR2 o MET tra quelle indagate nel campione analizzato. Profilo MSS (microsatellite stabile)."}, "Melanoma": {"genes": ["BRAF", "NRAS", "KIT", "GNA11", "GNAQ", "MSI"], "frase": "Non si evidenziano alterazioni nei geni BRAF, NRAS, KIT, GNA11 e GNAQ tra quelle indagate nel campione analizzato."}};
 var _referto=[];
 var _currentSaved=false;
 var _lastBlocked=false;
@@ -606,14 +606,29 @@ function usaPannelloNegativo(){
   } else if(_lastBlocked){
     showToast("\u26a0 Caso bloccato \u2014 non salvato");
   }
-  // Remove from accumulator any genes belonging to this panel (avoid contradictions)
+  // Find which panel genes are already in accumulator as positives
+  var genesAlreadySaved=_referto
+    .filter(function(r){return r.key&&r.key.startsWith(sede+"|")&&r.key.split("|")[1]!=="PANNELLO_NEGATIVO";})
+    .map(function(r){return r.key.split("|")[1];});
+  // Generate negative phrase only for genes NOT already in accumulator
+  var negativi=panel.genes.filter(function(g){return genesAlreadySaved.indexOf(g)===-1;});
+  if(negativi.length===0){
+    showToast("Tutti i geni del pannello sono già stati refertati.");
+    return;
+  }
+  // Remove any previous pannello negativo entry
   _referto=_referto.filter(function(r){
     if(!r.key||!r.key.startsWith(sede+"|")) return true;
-    var gene=r.key.split("|")[1];
-    return panel.genes.indexOf(gene)===-1&&gene!=="PANNELLO_NEGATIVO";
+    return r.key.split("|")[1]!=="PANNELLO_NEGATIVO";
   });
+  // Build dynamic negative phrase
+  var genesStr=negativi.join(", ").replace(/NTRK1, NTRK2, NTRK3/g,"NTRK1/2/3");
+  var frase="Non si evidenziano alterazioni nei geni "+genesStr+" tra quelle indagate nel campione analizzato.";
+  if(panel.genes.indexOf("MSI")!==-1&&genesAlreadySaved.indexOf("MSI")===-1){
+    frase+=" Profilo MSS (microsatellite stabile).";
+  }
   var key=sede+"|PANNELLO_NEGATIVO|completo";
-  _referto.push({key:key,label:"Pannello negativo ("+sede+")",testo:panel.frase,nota:""});
+  _referto.push({key:key,label:"Pannello negativo ("+sede+")",testo:frase,nota:""});
   aggiornaAccumulatore();
   showToast("Pannello negativo "+sede+" aggiunto \u2713");
   var acc=document.getElementById("accumulatore");

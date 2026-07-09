@@ -43,11 +43,21 @@ Strumento operativo per la compilazione della Parte B del referto NGS su pannell
 
 | File | Descrizione |
 |---|---|
-| `NGS_Refertazione_v2.html` | Tool di refertazione — si apre nel browser |
-| `NGS_master.xlsx` | Database sorgente (sede · gene · variante · reflex · note · vafMode · kind) |
+| `index.html` | Tool di refertazione — si apre nel browser. **Artefatto generato: non modificare a mano il blocco `var DB={...}`** |
+| `NGS_master.xlsx` | Database sorgente (sede · gene · v · reflex · note · vafMode · kind) |
+| `genera_output.py` | Rigenera il DB dentro `index.html` a partire dall'Excel, validando ogni voce contro la copertura del pannello |
 | `NGS_Doc1_Operativo.pptx` | Briefing operativo per i patologi (workflow + casi clinici) |
 | `NGS_Doc2_Riferimento.pptx` | Guida tecnica + morfologia per sede |
-| `NGS_Workflow_Bigino.pdf` | Schema operativo in una pagina |
+| `NGS workflow.pdf` | Schema operativo in una pagina |
+
+### Pipeline
+
+```bash
+python3 genera_output.py --check   # l'HTML è allineato all'Excel? le voci rispettano il pannello?
+python3 genera_output.py           # rigenera index.html dall'Excel
+```
+
+`--check` esce con codice 1 se una voce dichiara un'alterazione che il pannello non rileva — per esempio una CNV su un gene fuori da EGFR/ERBB2/MET — o se `vafMode` è incoerente con `kind`. In quel caso **nessun file viene scritto**.
 
 ---
 
@@ -57,17 +67,19 @@ Il file `NGS_master.xlsx` contiene una riga per ogni combinazione sede/gene/vari
 
 | Campo | Descrizione |
 |---|---|
-| `SEDE` | Sede tumorale |
-| `GENE` | Nome del gene |
-| `RISULTATO` | Label della variante nel menu |
-| `TIPO` | Standard / STEP |
-| `TIER` | Tier AMP/ASCO/CAP |
-| `REFLEX` | Testo reflex se richiesto, "No" altrimenti |
-| `NOTE` | Nota pratica sede-specifica |
-| `VAF_MODE` | `required` / `not_applicable` |
-| `KIND` | Tipo molecolare (snv, fusion, cnv, del_hom, del, splice, indel, msi, imbalance, wildtype, structural) |
+| `sede` | Sede tumorale |
+| `gene` | Nome del gene |
+| `v` | Label della variante nel menu |
+| `reflex` | Testo reflex se richiesto, "No" altrimenti |
+| `note` | Nota pratica sede-specifica |
+| `vafMode` | `required` / `not_applicable` |
+| `kind` | Tipo molecolare (snv, fusion, cnv, del_hom, del, splice, indel, msi, imbalance, wildtype, structural) |
 
-**Statistiche DB correnti:** 21 sedi · 162 voci
+**Statistiche DB correnti:** 21 sedi · 159 voci
+
+> **Nota sulla ricostruzione (luglio 2026).** L'`NGS_master.xlsx` originale e `genera_output.py` erano andati perduti: l'HTML era rimasto l'unica copia del database. Entrambi sono stati ricostruiti *a partire dall'HTML*. Le colonne `TIPO` (Standard/STEP) e `TIER` (AMP/ASCO/CAP) documentate nella versione precedente di questo README **non sono state recuperate**: non venivano trasferite nell'HTML e sono perdute. Se servono, vanno reinserite a mano.
+>
+> La perdita della sorgente è la ragione per cui il database ha offerto per mesi voci CNV su FGFR2, FGFR1 e CDK4 — geni sui quali il pannello non chiama CNV, come questo stesso README già dichiarava sotto *Pannello coperto* e *Limiti*. La conoscenza c'era; mancava un punto solo in cui fosse vincolante. Ora `genera_output.py` la applica come validazione.
 
 ---
 
